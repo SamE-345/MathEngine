@@ -1,0 +1,208 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Calculus
+{
+    internal class Calc
+    {
+        public expr SecondDerivative(expr express, Variable wrt)
+        {
+            return Differentiate(Differentiate(express, wrt), wrt);  
+        }
+        public expr Differentiate(expr expression, Variable wrt)
+        {
+            switch (expression)
+            {
+                case Constant c:
+                    return new Constant(0);
+                case Variable v:
+                    if (v.Identifier == wrt.Identifier)
+                        return new Constant(1);
+                    else
+                        return new Derivative(v.Identifier, wrt.Identifier);
+                case Add a:
+                    return new Add(
+                        Differentiate(a.left, wrt),
+                        Differentiate(a.right, wrt)
+                    );
+                case Multiply m: //Uses product rule
+                    return new Add(
+                        new Multiply(Differentiate(m.left, wrt), m.right),
+                        new Multiply(Differentiate(m.right, wrt), m.left)
+                        );
+                case Power p:
+                    if (p.Base is Variable V && p.Expo is Constant exp)
+                    {
+                        return new Multiply(
+                            new Constant(exp.Value),
+                            new Power(V, new Constant(exp.Value - 1))
+                            );
+
+                    }
+                    else
+                    {
+                        throw new Exception("Power cannot be differentiated");
+                    }
+                case FunctionCall f:
+                    return DifferentiateFunction(f, wrt);
+
+                default:
+                    throw new Exception("Unknown expression type");
+            }
+
+        }
+        public expr DifferentiateFunction(FunctionCall f, Variable wrt)
+        {
+            expr inner = f.Argument;
+            expr innerDeriv = Differentiate(inner, wrt);
+
+            switch (f.Name.ToLower())
+            {
+                case "sin":
+                    return new Multiply(new FunctionCall("Cos", inner), innerDeriv);
+                case "cos":
+                    return new Multiply(new Constant(-1), new Multiply(new FunctionCall("Sin", inner), innerDeriv));
+                case "exp":
+                    return new Multiply(f, innerDeriv);
+                case "ln":
+                    return new Multiply(new Divide(new Constant(1), inner), innerDeriv);
+                default:
+                    throw new Exception("Function not defined");
+            }
+        }
+        public expr Simplify(expr expres)
+        {
+            switch (expres)
+            {
+                case Constant c:
+                    return c;
+
+                case Variable v:
+                    return v;
+
+                case Derivative d:
+                    return d;
+
+                case Add a:
+                    expr aleft = Simplify(a.left);
+                    expr aright = Simplify(a.right);
+
+                    if (aleft is Constant l && l.Value == 0) return aright;
+                    if (aright is Constant r && r.Value == 0) return aleft;
+                    if (aright is Constant rc && aleft is Constant lc) return new Constant(rc.Value + lc.Value);
+
+                     
+                    return new Add(aleft, aright);
+
+                case Multiply m:
+                    expr mleft = Simplify(m.left);
+                    expr mright = Simplify(m.right);
+
+                    if ((mleft is Constant ml && ml.Value == 0) || mright is Constant mr && mr.Value == 0) return new Constant(0);
+                    if (mleft is Constant mll && mright is Constant mrr) return new Constant(mrr.Value * mll.Value);
+                    if (mleft is Constant mlll && mlll.Value == 1) return mright;
+                    if (mright is Constant mrrr && mrrr.Value == 1) return mleft;
+
+                    if (mleft is Constant c1 && mright is Multiply m2 && m2.left is Constant c2)
+                    {
+                        return new Multiply(new Constant(c1.Value * c2.Value), m2.right);
+                    }
+                    if (mright is Constant r3 && mleft is Multiply m1 && m1.left is Constant l3)
+                    {
+                        return new Multiply(new Constant(r3.Value * l3.Value), m1.right);
+                    }
+                    return new Multiply(m.left, m.right);
+
+                case Power p:
+                    expr baseExpr = Simplify(p.Base);
+                    expr expo = Simplify(p.Expo);
+
+                    if (expo is Constant e)
+                    {
+                        
+                        if (e.Value == 0) return new Constant(1);
+                        if (e.Value == 1) return Simplify(baseExpr);
+
+                        
+                        if (baseExpr is Constant bc)
+                            return new Constant(Math.Pow(bc.Value, e.Value));
+                    }
+
+                    return new Power(baseExpr, expo);
+
+                case FunctionCall f:
+                    return new FunctionCall(f.Name, Simplify(f.Argument));
+
+                default:
+                    return expres;
+                 
+                 
+            }
+
+        }
+        public double EvaluateExpression(double x, expr expression)
+        {
+            switch (expression)
+            {
+                case Constant c:
+                    return c.Value;
+                case Variable v:
+                    return x;
+                case Power p:
+                    return Math.Pow(EvaluateExpression(x,p.Base), EvaluateExpression(x,p.Expo));
+                case Add a:
+                    return EvaluateExpression(x,a.left) + EvaluateExpression(x,a.right);
+                case Divide d:
+                    return EvaluateExpression(x,d.left) / EvaluateExpression(x,d.right);
+                case Multiply m:
+                    return EvaluateExpression(x,m.left) * EvaluateExpression(x,m.right);
+                case FunctionCall f:
+                    if(f.Name.ToLower() == "sin")
+                    {
+                        return Math.Sin(EvaluateExpression(x,f.Argument));
+                    }
+                    else if (f.Name.ToLower() == "cos")
+                    {
+                        return Math.Cos(EvaluateExpression(x, f.Argument));
+                    }
+                    else if(f.Name.ToLower() == "ln")
+                    {
+                        return Math.Log(EvaluateExpression(x,f.Argument));
+                    }
+                    else if (f.Name.ToLower() == "tan")
+                    {
+                        return Math.Tan(EvaluateExpression(x,f.Argument));
+                    }
+                    else if (f.Name.ToLower() == "exp")
+                    {
+                        return Math.Exp(EvaluateExpression(x,f.Argument));
+                    }
+                        break;
+                default:
+                    throw new ArgumentException("Function not recognised");
+            }
+            throw new Exception("Something went wrong");
+        }
+        public double FindTurningPoint(expr expression, Variable v, double x, int ttl=0)
+        {
+            const int maxloop = 50;
+            if (ttl >= maxloop)
+            {
+                return x;
+            }
+            else
+            {
+                expr d1 = Differentiate(expression, v);
+                expr d2 = SecondDerivative(expression, v);
+
+                double newx = x - EvaluateExpression(x,d1)/EvaluateExpression(x,d2);
+                return FindTurningPoint(expression,v, newx, ttl+1);
+            }
+
+        }
+            
+    }
+}
