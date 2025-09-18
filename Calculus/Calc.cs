@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,6 +12,15 @@ namespace Calculus
         public expr SecondDerivative(expr express, Variable wrt)
         {
             return Differentiate(Differentiate(express, wrt), wrt);  
+        }
+        public Vectors Differentiate(Vectors vec, Variable wrt)
+        {
+            Vectors newvec = new Vectors(vec.shape);
+            for (int i = 0; i < vec.Data.Count(); i++)
+            {
+                newvec.Data[i] = Differentiate(vec.Data[i], wrt);
+            }
+            return newvec;
         }
         public expr Differentiate(expr expression, Variable wrt)
         {
@@ -203,6 +213,100 @@ namespace Calculus
             }
 
         }
-            
+        public expr IndefiniteIntegral(expr express, Variable wrt)
+        {
+            switch (express)
+            {
+                case Constant c:
+                    return Simplify(new Multiply(c, wrt));
+
+                case Variable v:
+                    if (v.Identifier == wrt.Identifier)
+                    {
+                        return new Divide(new Power(v, new Constant(2)), new Constant(2));
+                    }
+                    else
+                    {
+                        return new Multiply(v, wrt);
+                    }
+                case Add a:
+                    return new Add(
+                        IndefiniteIntegral(a.left, wrt), IndefiniteIntegral(a.right, wrt)
+                        );
+                case Multiply m:
+                    if (m.left == Differentiate(m.right, wrt))
+                    {
+                        return m.right;
+                    }
+                    else if (m.right == Differentiate(m.left, wrt))
+                    {
+                        return m.left;
+                    }
+                    else if (m.left is Constant cl)
+                    {
+                        return new Multiply(cl, IndefiniteIntegral(m.right, wrt));
+                    }
+                    if (m.right is Constant cr)
+                    {
+                        return new Multiply(cr, IndefiniteIntegral(m.left, wrt));
+                    }
+                    throw new Exception("General product integration not implemented");
+                case Divide d:
+                    if(d.left == Differentiate(d.right, wrt))
+                    {
+
+                        return new FunctionCall("ln", d.right);
+                    }
+                    else
+                    {
+                        throw new Exception("Expression cannot be integrated algebraically");
+                    }
+                case Power p:
+                    if (p.Base is Variable v2 && v2.Identifier == wrt.Identifier && p.Expo is Constant exp)
+                    {
+                        
+                        if (exp.Value == -1)
+                        {
+                            return new FunctionCall("ln", v2);
+                        }
+                        else
+                        {
+                            return new Divide(
+                                new Power(v2, new Constant(exp.Value + 1)),
+                                new Constant(exp.Value + 1)
+                            );
+                        }
+                    }
+                    throw new Exception("Expression cannot be integrated algebraically");
+                default:
+                    throw new Exception("Expression cannot be integrated algebraicallly");
+
+
+
+            }
+        }
+        public double DefiniteIntegral(expr express, Variable wrt, double lower, double upper)
+        {
+            try
+            {
+                return EvaluateExpression(upper, IndefiniteIntegral(express, wrt)) - EvaluateExpression(lower, IndefiniteIntegral(express, wrt));
+            }
+            catch
+            {
+                return TrapRule(express, wrt, lower, upper);
+            }
+        }
+        private double TrapRule(expr express, Variable wrt, double lower, double upper, int n = 10)
+        {
+            double h = (upper - lower) / n;
+            double sum = EvaluateExpression(lower, express) + EvaluateExpression(upper, express);
+            for (int i = 1; i < n; i++)
+            {
+                sum += 2 * (EvaluateExpression(i * h, express));
+            }
+            sum *= (0.5 * h);
+            return sum;
+                
+        }
     }
 }

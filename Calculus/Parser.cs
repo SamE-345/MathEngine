@@ -18,6 +18,9 @@ namespace Calculus
     public class Power : expr { public expr Base; public expr Expo; public Power(expr b, expr e) { Base = b; Expo = e; } }
     public class FunctionCall : expr { public string Name; public expr Argument; public FunctionCall(string n, expr arg) { Name = n; Argument = arg; } }
     public class Derivative : expr { public string variable; public string wrt; public Derivative(string vari, string w) {variable =vari; wrt = w; } }
+    public class Mtrx : expr { public string Identifier; public Matrix mat; public Mtrx(string id, Matrix M) { Identifier = id; mat = M; } }
+    public class Vec : expr { public string Identifier; Vectors vec; public Vec(string id, Vectors vectors) { Identifier = id; vec = vectors; } }
+    
     public class Parser
     {
         private string _text;

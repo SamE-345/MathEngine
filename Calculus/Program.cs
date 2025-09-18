@@ -10,6 +10,7 @@ namespace Calculus
     {
         static void Main(string[] args)
         {
+            Dictionary<string,expr> Functions = new Dictionary<string,expr>();
             string input = "3*x^2 + sin(x) ";
             var parser = new Parser(input);
             expr ast = parser.ParseExpr();
