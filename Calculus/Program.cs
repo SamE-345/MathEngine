@@ -15,9 +15,9 @@ namespace Calculus
             var parser = new Parser(input);
             expr ast = parser.ParseExpr();
             Variable V = new Variable("x");
-            Calc c = new Calc();
+            
             Console.WriteLine(input);
-            Console.WriteLine(c.EvaluateExpression(1.0, c.Simplify(c.Differentiate(ast, V))));
+            Console.WriteLine(SingleVarCalc.EvaluateExpression(1.0, SingleVarCalc.Simplify(SingleVarCalc.Differentiate(ast, V))));
         }
         static void Print(expr e, string indent = "")
         {
@@ -42,7 +42,7 @@ namespace Calculus
                     break;
                 case FunctionCall f:
                     Console.WriteLine($"{indent}Func({f.Name})");
-                    Print(f.Argument, indent + "  ");
+                    PrintEq(f.Function); Console.Write( indent + "  ");
                     break;
             }
         }
@@ -74,7 +74,7 @@ namespace Calculus
                     break;
                 case FunctionCall f:
                     Console.Write(f.Name + "(");
-                    PrintEq(f.Argument);
+                    PrintEq(f.Function);
                     Console.Write(")");
                     break;
                 case Power p:

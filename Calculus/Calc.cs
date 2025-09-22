@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 
 namespace Calculus
 {
-    internal class Calc
+    public static class SingleVarCalc
     {
-        public expr SecondDerivative(expr express, Variable wrt)
+        static public expr SecondDerivative(expr express, Variable wrt)
         {
             return Differentiate(Differentiate(express, wrt), wrt);  
         }
-        public Vectors Differentiate(Vectors vec, Variable wrt)
+        static public Vectors Differentiate(Vectors vec, Variable wrt)
         {
             Vectors newvec = new Vectors(vec.shape);
             for (int i = 0; i < vec.Data.Count(); i++)
@@ -22,7 +22,7 @@ namespace Calculus
             }
             return newvec;
         }
-        public expr Differentiate(expr expression, Variable wrt)
+        public static expr Differentiate(expr expression, Variable wrt)
         {
             switch (expression)
             {
@@ -64,9 +64,9 @@ namespace Calculus
             }
 
         }
-        public expr DifferentiateFunction(FunctionCall f, Variable wrt)
+        public static expr DifferentiateFunction(FunctionCall f, Variable wrt)
         {
-            expr inner = f.Argument;
+            expr inner = f.Function;
             expr innerDeriv = Differentiate(inner, wrt);
 
             switch (f.Name.ToLower())
@@ -83,7 +83,7 @@ namespace Calculus
                     throw new Exception("Function not defined");
             }
         }
-        public expr Simplify(expr expres)
+        public static expr Simplify(expr expres)
         {
             switch (expres)
             {
@@ -144,7 +144,7 @@ namespace Calculus
                     return new Power(baseExpr, expo);
 
                 case FunctionCall f:
-                    return new FunctionCall(f.Name, Simplify(f.Argument));
+                    return new FunctionCall(f.Name, Simplify(f.Function));
 
                 default:
                     return expres;
@@ -153,7 +153,7 @@ namespace Calculus
             }
 
         }
-        public double EvaluateExpression(double x, expr expression)
+        public static double EvaluateExpression(double x, expr expression)
         {
             switch (expression)
             {
@@ -172,23 +172,23 @@ namespace Calculus
                 case FunctionCall f:
                     if(f.Name.ToLower() == "sin")
                     {
-                        return Math.Sin(EvaluateExpression(x,f.Argument));
+                        return Math.Sin(EvaluateExpression(x,f.Function));
                     }
                     else if (f.Name.ToLower() == "cos")
                     {
-                        return Math.Cos(EvaluateExpression(x, f.Argument));
+                        return Math.Cos(EvaluateExpression(x, f.Function));
                     }
                     else if(f.Name.ToLower() == "ln")
                     {
-                        return Math.Log(EvaluateExpression(x,f.Argument));
+                        return Math.Log(EvaluateExpression(x,f.Function));
                     }
                     else if (f.Name.ToLower() == "tan")
                     {
-                        return Math.Tan(EvaluateExpression(x,f.Argument));
+                        return Math.Tan(EvaluateExpression(x,f.Function));
                     }
                     else if (f.Name.ToLower() == "exp")
                     {
-                        return Math.Exp(EvaluateExpression(x,f.Argument));
+                        return Math.Exp(EvaluateExpression(x,f.Function));
                     }
                         break;
                 default:
@@ -196,7 +196,7 @@ namespace Calculus
             }
             throw new Exception("Something went wrong");
         }
-        public double FindTurningPoint(expr expression, Variable v, double x, int ttl=0)
+        public static double FindTurningPoint(expr expression, Variable v, double x, int ttl=0)
         {
             const int maxloop = 50;
             if (ttl >= maxloop)
@@ -213,7 +213,7 @@ namespace Calculus
             }
 
         }
-        public expr IndefiniteIntegral(expr express, Variable wrt)
+        public static expr IndefiniteIntegral(expr express, Variable wrt)
         {
             switch (express)
             {
@@ -285,7 +285,7 @@ namespace Calculus
 
             }
         }
-        public double DefiniteIntegral(expr express, Variable wrt, double lower, double upper)
+        public static double DefiniteIntegral(expr express, Variable wrt, double lower, double upper)
         {
             try
             {
@@ -296,7 +296,7 @@ namespace Calculus
                 return TrapRule(express, wrt, lower, upper);
             }
         }
-        private double TrapRule(expr express, Variable wrt, double lower, double upper, int n = 10)
+        private static double TrapRule(expr express, Variable wrt, double lower, double upper, int n = 10)
         {
             double h = (upper - lower) / n;
             double sum = EvaluateExpression(lower, express) + EvaluateExpression(upper, express);
@@ -309,4 +309,86 @@ namespace Calculus
                 
         }
     }
+    public static class MultiVarCalc
+    {
+        private static expr PartialDeriv(expr express, Variable wrt)
+        {
+            switch(express) {
+                case Constant c:
+                    return new Constant(0);
+                case Variable v:
+                    if (v.Identifier == wrt.Identifier)
+                        return new Constant(1.0);
+                    else
+                        return new Constant(0.0);
+                case Add a:
+                    return new Add(
+                        PartialDeriv(a.left, wrt),
+                        PartialDeriv(a.right, wrt)
+                    );
+                case Multiply m: //Uses product rule
+                    return new Add(
+                        new Multiply(PartialDeriv(m.left, wrt), m.right),
+                        new Multiply(PartialDeriv(m.right, wrt), m.left)
+                        );
+                case Power p:
+                    if (p.Base is Variable V && p.Expo is Constant exp)
+                    {
+                        return new Multiply(
+                            new Constant(exp.Value),
+                            new Power(V, new Constant(exp.Value - 1))
+                            );
+
+                    }
+                    else
+                    {
+                        return new Constant(0.0);
+                    }
+                case FunctionCall f:
+                    expr inner = f.Function;
+                    expr innerDeriv = PartialDeriv(inner, wrt);
+
+                    switch (f.Name.ToLower())
+                    {
+                        case "sin":
+                            return new Multiply(new FunctionCall("Cos", inner), innerDeriv);
+                        case "cos":
+                            return new Multiply(new Constant(-1), new Multiply(new FunctionCall("Sin", inner), innerDeriv));
+                        case "exp":
+                            return new Multiply(f, innerDeriv);
+                        case "ln":
+                            return new Multiply(new Divide(new Constant(1), inner), innerDeriv);
+                        default:
+                            throw new Exception("Function not defined");
+                    }
+
+
+                default:
+                    throw new Exception("Unknown expression type");
+            }
+
+        }
+        public static Vectors Gradient(List<Variable> vars, expr expression)
+        {
+            Vectors grad = new Vectors(vars.Count());
+            for (int i = 0; i < vars.Count(); i++)
+            {
+                grad[i] = PartialDeriv(expression, vars[i]);
+            }
+            return grad;
+        }
+        public static Constant Curvature(ParametricFunction f, double point)
+        {
+            double k = SingleVarCalc.EvaluateExpression(point, SingleVarCalc.Differentiate(f.X, f.V)) * SingleVarCalc.EvaluateExpression(point, SingleVarCalc.SecondDerivative(f.Y, f.V));
+            k -= SingleVarCalc.EvaluateExpression(point, SingleVarCalc.Differentiate(f.Y, f.V)) - SingleVarCalc.EvaluateExpression(point,SingleVarCalc.SecondDerivative(f.X, f.V));
+            double denominator = Math.Pow(SingleVarCalc.EvaluateExpression(point, SingleVarCalc.Differentiate(f.X, f.V)), 2) + Math.Pow(SingleVarCalc.EvaluateExpression(point, SingleVarCalc.Differentiate(f.Y, f.V)), 2);
+            denominator = Math.Pow(denominator, 1.5);
+            k = k/denominator;
+            return new Constant(k);
+        }
+        public static Constant DirectionalDerivative(FunctionCall funct, Vectors v) { 
+            return Gradient(funct.variables, funct.Function).DotProduct(v);
+        }
+    }
+
 }

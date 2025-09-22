@@ -7,8 +7,6 @@ using System.Threading.Tasks;
 namespace Calculus
 {
     public abstract class expr {
-        
-    
     }
     public class Constant : expr { public double Value; public Constant(double v) { Value = v; } }
     public class Variable : expr { public string Identifier; public Variable(string i) { Identifier = i; } }
@@ -16,11 +14,56 @@ namespace Calculus
     public class Divide : expr { public expr left; public expr right; public Divide(expr l, expr r) { left = l; right = r; } }
     public class Multiply : expr { public expr left; public expr right; public Multiply(expr l, expr r) { left = l; right = r; } }
     public class Power : expr { public expr Base; public expr Expo; public Power(expr b, expr e) { Base = b; Expo = e; } }
-    public class FunctionCall : expr { public string Name; public expr Argument; public FunctionCall(string n, expr arg) { Name = n; Argument = arg; } }
+    public class FunctionCall : expr { 
+        public string Name;
+        public expr Function;
+        public List<Variable> variables;
+        public FunctionCall(string n, expr f) { Name = n; Function = f; FindVars(f); }
+        public FunctionCall(string n, expr f, List<Variable> vars) {
+            Name = n; Function = f; variables = vars;
+        }
+        private void FindVars(expr express)
+        {
+            switch (express)
+            {
+                case Add a:
+                    FindVars(a.left);
+                    FindVars(a.right);
+                    break;
+                case Multiply m:
+                    FindVars(m.left);
+                    FindVars(m.right);
+                    break;
+                case Divide d:
+                    FindVars(d.left);
+                    FindVars(d.right);
+                    break;
+                case Power p:
+                    FindVars(p.Expo);
+                    FindVars(p.Base);
+                    break;
+                case Variable v:
+                    variables.Add(v);
+                    break;
+                case FunctionCall f: FindVars(f.Function); break;
+
+            }
+        }
+    
+    }
     public class Derivative : expr { public string variable; public string wrt; public Derivative(string vari, string w) {variable =vari; wrt = w; } }
     public class Mtrx : expr { public string Identifier; public Matrix mat; public Mtrx(string id, Matrix M) { Identifier = id; mat = M; } }
     public class Vec : expr { public string Identifier; Vectors vec; public Vec(string id, Vectors vectors) { Identifier = id; vec = vectors; } }
-    
+    public class ParametricFunction : expr
+    {
+        public string Identifier;public expr X;public expr Y; public Variable V; public ParametricFunction(string id, expr fx, expr fy, Variable var)
+        {
+            Identifier = id;
+            X = fx;
+            Y = fy;
+            V = var;
+        }
+    }
     public class Parser
     {
         private string _text;
