@@ -389,6 +389,67 @@ namespace Calculus
         public static Constant DirectionalDerivative(FunctionCall funct, Vectors v) { 
             return Gradient(funct.variables, funct.Function).DotProduct(v);
         }
+        public static double Divergence(VectorField v, double[] point)
+        {
+            Dictionary<Variable, double> keyValuePairs = new Dictionary<Variable, double>();
+            double sum = 0;
+            for (int i=0; i<point.Length; i++)
+            {
+                int j = i+24;
+                Variable tempvar = new Variable(((char)i).ToString());
+                keyValuePairs.Add(tempvar, point[i]);
+            }
+
+
+            sum += EvaluateExpression(keyValuePairs, PartialDeriv(v.P, new Variable("x")));
+            sum += EvaluateExpression(keyValuePairs, PartialDeriv(v.Q, new Variable("y")));
+            //Modify to allow for third dimension divergence. Need to change vector field class first
+            return sum; 
+        }
+        public static double EvaluateExpression(Dictionary<Variable,double> vals, expr expression)
+        {
+            switch (expression)
+            {
+                case Constant c:
+                    return c.Value;
+                
+                case Power p:
+                    return Math.Pow(EvaluateExpression(vals, p.Base), EvaluateExpression(vals, p.Expo));
+                case Add a:
+                    return EvaluateExpression(vals, a.left) + EvaluateExpression(vals, a.right);
+                case Divide d:
+                    return EvaluateExpression(vals, d.left) / EvaluateExpression(vals, d.right);
+                case Multiply m:
+                    return EvaluateExpression(vals, m.left) * EvaluateExpression(vals, m.right);
+                case FunctionCall f:
+                    if (f.Name.ToLower() == "sin")
+                    {
+                        return Math.Sin(EvaluateExpression(vals, f.Function));
+                    }
+                    else if (f.Name.ToLower() == "cos")
+                    {
+                        return Math.Cos(EvaluateExpression(vals, f.Function));
+                    }
+                    else if (f.Name.ToLower() == "ln")
+                    {
+                        return Math.Log(EvaluateExpression(vals, f.Function));
+                    }
+                    else if (f.Name.ToLower() == "tan")
+                    {
+                        return Math.Tan(EvaluateExpression(vals, f.Function));
+                    }
+                    else if (f.Name.ToLower() == "exp")
+                    {
+                        return Math.Exp(EvaluateExpression(vals, f.Function));
+                    }
+                    break;
+                case Variable v:
+                    return vals[v];
+                default:
+                    throw new ArgumentException("Function not recognised");
+            }
+            throw new Exception("Something went wrong");
+        }
     }
 
 }

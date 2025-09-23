@@ -64,6 +64,22 @@ namespace Calculus
             V = var;
         }
     }
+    public class VectorField : expr { public string Identifier; public expr P; public expr Q;
+        public VectorField(string name, expr p, expr q)
+        {
+            Identifier = name; P = p; Q = q;
+        }
+        public Vectors EvaluatePoint(double x, double y)
+        {
+            Dictionary<Variable, double> inputs = new Dictionary<Variable, double>();
+            inputs.Add(new Variable("x"), x);
+            inputs.Add(new Variable("y"), y);
+            Vectors vec = new Vectors(2);
+            vec[0] = new Constant(MultiVarCalc.EvaluateExpression(inputs, P));
+            vec[1] = new Constant(MultiVarCalc.EvaluateExpression(inputs, Q));
+            return vec;
+        }
+    }
     public class Parser
     {
         private string _text;
